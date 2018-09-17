@@ -11,13 +11,14 @@ type UserInfo struct {
 }
 
 // 异步加载 for userManagerManager
-func asyncNewUserInfo(cb *selectCaseInterface.CallbackHandler, callbackMsgName string, req userDefine.WxMpLoginReq, userData interface{}) {
+func asyncNewUserInfo(cb *selectCaseInterface.CallbackHandler, usrData *userDefine.UserData) *UserInfo {
 
-	op := database.Instance().NewOperation("call userInsert(?,?,?,?,?)", req.UnionId, req.OpenId, req.Nickname, req.Headimgurl, req.RefreshToken)
-	op.UserData = userData
+	op := database.Instance().NewOperation("call userInsert(?,?,?,?,?)",
+		usrData.UnionId, usrData.OpenId, usrData.Nickname, usrData.Headimgurl, usrData.RefreshToken)
+	op.UserData = usrData
 	database.Instance().ExecOperationForCB(cb, op)
 
-	return
+	return newUserInfoForUserData(usrData)
 }
 
 // 创建新用户

@@ -57,9 +57,11 @@ func NewUser(usrData userDefine.UserData) *User {
 }
 
 // 异步创建
-func AsyncNewUser(cb *selectCaseInterface.CallbackHandler) {
+func AsyncNewUser(cb *selectCaseInterface.CallbackHandler, usrData userDefine.UserData) *User {
 	usr := newUser()
-	asyncNewUserInfo(cb, "")
+	usr.userInfo = asyncNewUserInfo(cb, &usrData)
+
+	return usr
 }
 func newUser() *User {
 	hbmsg := make(map[string]interface{})

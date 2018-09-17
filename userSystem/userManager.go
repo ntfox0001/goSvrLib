@@ -84,7 +84,7 @@ func (m *UserManager) loadAllUser() error {
 				if err := util.I2Stru(v, &usrData); err == nil {
 
 					// 创建新user
-					usr := NewUser(&usrData)
+					usr := NewUser(usrData)
 
 					m.userMap[usrData.UnionId] = usr
 					m.userUserIdMap[usrData.UserId] = usrData.UnionId
@@ -237,7 +237,7 @@ func (m *UserManager) generateTokenReq(data interface{}) bool {
 		//向数据库插入新用户
 
 		cb := m.GetSelectLoopHelper().NewCallbackHandler("NewUserInfoResp", NewUIReq)
-		usr := NewUser(req.UserData)
+		usr := AsyncNewUser(cb, req.UserData)
 		m.userMap[req.UnionId] = usr
 
 	}
