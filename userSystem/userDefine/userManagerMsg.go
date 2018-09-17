@@ -69,6 +69,6 @@ type WxMpLoginResp struct {
 }
 
 type NewUserInfoReq struct {
-	WxMpLoginReq
+	UserData
 	WaitTokenChan chan GenerateTokenResp
 }

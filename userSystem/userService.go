@@ -17,21 +17,25 @@ type UserService struct {
 	callback          usInterface.IServiceCallback
 }
 
-func NewUserService(listenip string, port string, servcb usInterface.IServiceCallback, usrMgrcb usInterface.IUserCallback, usrcb usInterface.IUserCallback) *UserService {
-
-	return NewUserServiceSsl(listenip, port, "", "", servcb, usrMgrcb, usrcb)
+type UserServiceParams struct {
+	Listenip          string
+	Port              string
+	CertFile, KeyFile string
+	Servcb            usInterface.IServiceCallback
+	UsrMgrcb          usInterface.IUserCallback
+	Usrcb             usInterface.IUserCallback
 }
 
-func NewUserServiceSsl(listenip string, port string, certFile, keyFile string, servcb usInterface.IServiceCallback, usrMgrcb usInterface.IUserCallback, usrcb usInterface.IUserCallback) *UserService {
+func NewUserService(params UserServiceParams) *UserService {
 
 	usrServ := UserService{
-		userMgr:  NewUserManager(listenip, port, usrMgrcb, usrcb),
-		listenip: listenip,
-		port:     port,
+		userMgr:  NewUserManager(params.Listenip, params.Port, params.UsrMgrcb, params.Usrcb),
+		listenip: params.Listenip,
+		port:     params.Port,
 		server:   nil,
 		ssl:      true,
-		certFile: certFile,
-		keyFile:  keyFile,
+		certFile: params.CertFile,
+		keyFile:  params.KeyFile,
 	}
 
 	return &usrServ

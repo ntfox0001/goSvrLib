@@ -17,15 +17,16 @@ import (
 
 	"goSvrLib/util"
 
-	"github.com/gorilla/websocket"
 	"goSvrLib/log"
+
+	"github.com/gorilla/websocket"
 )
 
 type UserManager struct {
 	wsUserMap     map[networkInterface.IMsgHandler]*User
-	userToken     map[string]userDefine.WxMpLoginReq // token和wxunionid的对应，用户登录后就删除
-	userMap       map[string]*User                   // key是wxunionid
-	userUserIdMap map[int]string                     // userId：unionId
+	userToken     map[string]userDefine.UserData // token和wxunionid的对应，用户登录后就删除
+	userMap       map[string]*User               // key是wxunionid
+	userUserIdMap map[int]string                 // userId：unionId
 	svrip         string
 	svrport       string
 	selectLoop    *selectCase.SelectLoop
@@ -38,7 +39,7 @@ func NewUserManager(ip string, port string, usrMgrcb usInterface.IUserCallback, 
 
 	usrMgr := &UserManager{
 		wsUserMap:     make(map[networkInterface.IMsgHandler]*User),
-		userToken:     make(map[string]userDefine.WxMpLoginReq),
+		userToken:     make(map[string]userDefine.UserData),
 		userMap:       make(map[string]*User),
 		userUserIdMap: make(map[int]string),
 		svrip:         ip,
@@ -219,10 +220,10 @@ func (m *UserManager) generateTokenReq(data interface{}) bool {
 	//加载userinfo
 	if usr, ok := m.userMap[req.UnionId]; ok {
 		token := userDefine.NewToken(req.UnionId)
-		m.userToken[token] = req.WxMpLoginReq
+		m.userToken[token] = req.UserData
 
 		// 如果user已经加载，那么要刷新一下wx信息
-		usr.UpdateWxInfo(req.WxMpLoginReq)
+		usr.UpdateWxInfo(req.UserData)
 
 		resp.UserData = *usr.UserInfo().GetUserData()
 		resp.Token = token
@@ -230,14 +231,14 @@ func (m *UserManager) generateTokenReq(data interface{}) bool {
 	} else {
 		// 新创建一个userInfo
 		NewUIReq := userDefine.NewUserInfoReq{
-			WxMpLoginReq:  req.WxMpLoginReq,
+			UserData:      req.UserData,
 			WaitTokenChan: req.WaitTokenChan,
 		}
 		//向数据库插入新用户
 
 		cb := m.GetSelectLoopHelper().NewCallbackHandler("NewUserInfoResp", NewUIReq)
-		usr := AsyncNewUser(cb, &req.WxMpLoginReq)
-		m.userMap[req.WxMpLoginReq.UnionId] = usr
+		usr := NewUser(req.UserData)
+		m.userMap[req.UnionId] = usr
 
 	}
 
@@ -272,7 +273,7 @@ func (m *UserManager) newUserInfoResp(data interface{}) bool {
 
 			// new token
 			token := userDefine.NewToken(usrData.UnionId)
-			m.userToken[token] = uiReq.WxMpLoginReq
+			m.userToken[token] = uiReq.UserData
 
 			m.userUserIdMap[usrData.UserId] = usrData.UnionId
 			resp.Token = token

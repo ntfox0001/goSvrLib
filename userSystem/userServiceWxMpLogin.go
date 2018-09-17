@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"goSvrLib/log"
+
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -29,7 +30,7 @@ func (u *UserService) wxmpLoginProcess(w http.ResponseWriter, r *http.Request) {
 
 	gtReq := userDefine.GenerateTokenReq{
 		WaitTokenChan: waitTokenChan,
-		WxMpLoginReq:  req,
+		UserData:      req.UserData,
 	}
 
 	u.userMgr.GetSelectLoopHelper().SendMsgToMe(selectCaseInterface.NewEventChanMsg("GenerateTokenReq", nil, gtReq))

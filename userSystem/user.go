@@ -50,17 +50,18 @@ type User struct {
 }
 
 // 从内存创建user，数据库已经创建完成
-func NewUser(usrData *userDefine.UserData) *User {
-	usr := newUser(usrData)
-	usr.userInfo = newUserInfoForUserData(usrData)
+func NewUser(usrData userDefine.UserData) *User {
+	usr := newUser()
+	usr.userInfo = newUserInfoForUserData(&usrData)
 	return usr
 }
 
-func AsyncNewUser(cb *selectCaseInterface.CallbackHandler, usrData *userDefine.UserData) {
-	usr := newUser(usrData)
-	usr
+// 异步创建
+func AsyncNewUser(cb *selectCaseInterface.CallbackHandler) {
+	usr := newUser()
+	asyncNewUserInfo(cb, "")
 }
-func newUser(usrData *userDefine.UserData) *User {
+func newUser() *User {
 	hbmsg := make(map[string]interface{})
 	hbmsg["msgId"] = "HeartbeatNotify"
 
@@ -204,6 +205,6 @@ func (u *User) runInUser(data interface{}) bool {
 }
 
 // 当用户再次登陆时，更新信息
-func (u *User) UpdateWxInfo(reqData userDefine.WxMpLoginReq) {
+func (u *User) UpdateWxInfo(usrData userDefine.UserData) {
 
 }
