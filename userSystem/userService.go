@@ -5,6 +5,7 @@ import (
 	"goSvrLib/userSystem/usInterface"
 
 	"goSvrLib/log"
+	
 )
 
 type UserService struct {
@@ -18,12 +19,13 @@ type UserService struct {
 }
 
 type UserServiceParams struct {
-	Listenip          string
-	Port              string
-	CertFile, KeyFile string
-	Servcb            usInterface.IServiceCallback
-	UsrMgrcb          usInterface.IUserCallback
-	Usrcb             usInterface.IUserCallback
+	Listenip string                       `json:"listenIp"`
+	Port     string                       `json:"port"`
+	CertFile string                       `json:"certFile"`
+	KeyFile  string                       `json:"keyFile"`
+	Servcb   usInterface.IServiceCallback `json:"-"`
+	UsrMgrcb usInterface.IUserCallback    `json:"-"`
+	Usrcb    usInterface.IUserCallback    `json:"-"`
 }
 
 func NewUserService(params UserServiceParams) *UserService {
