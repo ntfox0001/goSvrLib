@@ -35,6 +35,13 @@ type UserManager struct {
 	usrCallback   usInterface.IUserCallback
 }
 
+/*
+	user登陆流程：
+	需要实现一个php微信登陆，然后构造一个UserData传给服务器
+	
+
+*/
+
 func NewUserManager(ip string, port string, usrMgrcb usInterface.IUserCallback, usrcb usInterface.IUserCallback) *UserManager {
 
 	usrMgr := &UserManager{

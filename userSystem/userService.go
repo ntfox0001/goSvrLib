@@ -5,7 +5,6 @@ import (
 	"goSvrLib/userSystem/usInterface"
 
 	"goSvrLib/log"
-	
 )
 
 type UserService struct {
@@ -38,6 +37,7 @@ func NewUserService(params UserServiceParams) *UserService {
 		ssl:      true,
 		certFile: params.CertFile,
 		keyFile:  params.KeyFile,
+		callback: params.Servcb,
 	}
 
 	return &usrServ

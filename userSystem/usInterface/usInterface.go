@@ -10,6 +10,7 @@ type IUserCallback interface {
 	Release()
 }
 type IServiceCallback interface {
+	// 
 	Initial(server *network.Server) error
 	Release()
 }

@@ -17,10 +17,6 @@ type UserPair struct {
 	Ac      networkInterface.IMsgHandler
 	UnionId string
 }
-type UserToken struct {
-	Token      string
-	CreateTime int64
-}
 
 func NewToken(str string) string {
 	b := make([]byte, 2)
