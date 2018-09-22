@@ -47,23 +47,24 @@ type User struct {
 	acceptMsgChan     chan *networkInterface.RawMsgData
 	userInfo          *UserInfo
 	selectLoop        *selectCase.SelectLoop
+	callback          IUserCallback
 }
 
 // 从内存创建user，数据库已经创建完成
-func NewUser(usrData userDefine.UserData) *User {
-	usr := newUser()
+func NewUser(usrData userDefine.UserData, usrcb IUserCallback) *User {
+	usr := newUser(usrcb)
 	usr.userInfo = newUserInfoForUserData(&usrData)
 	return usr
 }
 
 // 异步创建
-func AsyncNewUser(cb *selectCaseInterface.CallbackHandler, usrData userDefine.UserData) *User {
-	usr := newUser()
+func AsyncNewUser(cb *selectCaseInterface.CallbackHandler, usrData userDefine.UserData, usrcb IUserCallback) *User {
+	usr := newUser(usrcb)
 	usr.userInfo = asyncNewUserInfo(cb, &usrData)
 
 	return usr
 }
-func newUser() *User {
+func newUser(usrcb IUserCallback) *User {
 	hbmsg := make(map[string]interface{})
 	hbmsg["msgId"] = "HeartbeatNotify"
 
@@ -80,9 +81,11 @@ func newUser() *User {
 		acceptMsgChan:     make(chan *networkInterface.RawMsgData, 20),
 		userInfo:          nil,
 		selectLoop:        selectCase.NewSelectLoop("user", 10, 10),
+		callback:          usrcb,
 	}
 
 	usr.SelectLoopHelper().RegisterEvent("RunInUser", usr.runInUser)
+
 	return usr
 }
 func (u *User) AttachWSAcceptConn(acceptConn networkInterface.IMsgHandler) {

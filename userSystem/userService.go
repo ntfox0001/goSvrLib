@@ -2,7 +2,6 @@ package userSystem
 
 import (
 	"goSvrLib/network"
-	"goSvrLib/userSystem/usInterface"
 
 	"goSvrLib/log"
 )
@@ -14,17 +13,17 @@ type UserService struct {
 	server            *network.Server
 	ssl               bool
 	certFile, keyFile string
-	callback          usInterface.IServiceCallback
+	callback          IServiceCallback
 }
 
 type UserServiceParams struct {
-	Listenip string                       `json:"listenIp"`
-	Port     string                       `json:"port"`
-	CertFile string                       `json:"certFile"`
-	KeyFile  string                       `json:"keyFile"`
-	Servcb   usInterface.IServiceCallback `json:"-"`
-	UsrMgrcb usInterface.IUserCallback    `json:"-"`
-	Usrcb    usInterface.IUserCallback    `json:"-"`
+	Listenip string               `json:"listenIp"`
+	Port     string               `json:"port"`
+	CertFile string               `json:"certFile"`
+	KeyFile  string               `json:"keyFile"`
+	Servcb   IServiceCallback     `json:"-"`
+	UsrMgrcb IUserManagerCallback `json:"-"`
+	Usrcb    IUserCallback        `json:"-"`
 }
 
 func NewUserService(params UserServiceParams) *UserService {
@@ -62,7 +61,7 @@ func (u *UserService) Initial() {
 	u.server.RegisterRouter("/wxmpLogin", wxmpRouter)
 
 	// 初始化回调
-	if err := u.callback.Initial(u.server); err != nil {
+	if err := u.callback.OnInitial(u.server); err != nil {
 		log.Error("callback initial error", "err", err.Error())
 		return
 	}
@@ -74,7 +73,7 @@ func (u *UserService) Initial() {
 }
 
 func (u *UserService) Release() {
-	u.callback.Release()
+	u.callback.OnRelease()
 	u.server.Close()
 	u.userMgr.Release()
 
