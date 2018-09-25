@@ -13,6 +13,10 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+var (
+	wxOpenGetTokenByCodeUrl = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
+)
+
 // 独立的go协程
 func (u *UserService) wxmpLoginProcess(w http.ResponseWriter, r *http.Request) {
 
@@ -56,5 +60,19 @@ func (u *UserService) wxmpLoginProcess(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, string(s))
 	}
 
+	log.Debug("- user http left.")
+}
+
+func (u *UserService) wxmpCodeLoginProcess(w http.ResponseWriter, r *http.Request) {
+
+	log.Debug("+ user http arrived.")
+	s, _ := ioutil.ReadAll(r.Body)
+
+	req := userDefine.WxMpCodeLoginReq{}
+	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(s, &req); err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		io.WriteString(w, err.Error())
+		return
+	}
 	log.Debug("- user http left.")
 }

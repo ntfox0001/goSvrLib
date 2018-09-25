@@ -21,6 +21,8 @@ type UserServiceParams struct {
 	Port     string               `json:"port"`
 	CertFile string               `json:"certFile"`
 	KeyFile  string               `json:"keyFile"`
+	AppId string `json:"appId"`
+	Secret string 
 	Servcb   IServiceCallback     `json:"-"`
 	UsrMgrcb IUserManagerCallback `json:"-"`
 	Usrcb    IUserCallback        `json:"-"`
@@ -54,11 +56,10 @@ func (u *UserService) Initial() {
 	wsr.DisableCheckOrigin(false)
 	u.server.RegisterRouter("/user", wsr)
 
-	// 注册微信消息
-	wxmpRouter := network.RouterHandler{
-		ProcessHttpFunc: u.wxmpLoginProcess,
-	}
-	u.server.RegisterRouter("/wxmpLogin", wxmpRouter)
+	// 注册微信登陆，外面有php已经登陆时使用，多用于网页服务，cookie保持登录状态
+	u.server.RegisterRouter("/wxmpLogin", network.RouterHandler{ProcessHttpFunc: u.wxmpLoginProcess})
+	// 注册微信code方式登陆,用于长连接用户登陆
+	u.server.RegisterRouter("/wxmpCodeLogin", network.RouterHandler{ProcessHttpFunc: u.wxmpCodeLoginProcess})
 
 	// 初始化回调
 	if err := u.callback.OnInitial(u.server); err != nil {

@@ -68,3 +68,12 @@ type NewUserInfoReq struct {
 	UserData
 	WaitTokenChan chan GenerateTokenResp
 }
+
+// wx code login
+type WxMpCodeLoginReq struct {
+	Code string `json:"code"`
+}
+
+type WxMpCodeLoginResp struct {
+	
+}
