@@ -226,7 +226,7 @@ func (m *UserManager) generateTokenReq(data interface{}) bool {
 	var resp userDefine.GenerateTokenResp
 	//加载userinfo
 	if usr, ok := m.userMap[req.UnionId]; ok {
-		token := userDefine.NewToken(req.UnionId)
+		token := util.NewToken(req.UnionId)
 		m.userToken[token] = req.UserData
 
 		// 如果user已经加载，那么要刷新一下wx信息
@@ -279,7 +279,7 @@ func (m *UserManager) newUserInfoResp(data interface{}) bool {
 			}
 
 			// new token
-			token := userDefine.NewToken(usrData.UnionId)
+			token := util.NewToken(usrData.UnionId)
 			m.userToken[token] = uiReq.UserData
 
 			m.userUserIdMap[usrData.UserId] = usrData.UnionId

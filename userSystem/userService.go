@@ -14,15 +14,19 @@ type UserService struct {
 	ssl               bool
 	certFile, keyFile string
 	callback          IServiceCallback
+	appLoginInfos     map[string]AppLoginInfo
 }
-
+type AppLoginInfo struct {
+	AppId  string
+	Secret string
+}
 type UserServiceParams struct {
-	Listenip string               `json:"listenIp"`
-	Port     string               `json:"port"`
-	CertFile string               `json:"certFile"`
-	KeyFile  string               `json:"keyFile"`
-	AppId string `json:"appId"`
-	Secret string 
+	Listenip string `json:"listenIp"`
+	Port     string `json:"port"`
+	CertFile string `json:"certFile"`
+	KeyFile  string `json:"keyFile"`
+	AppId    string `json:"appId"`
+	Secret   string
 	Servcb   IServiceCallback     `json:"-"`
 	UsrMgrcb IUserManagerCallback `json:"-"`
 	Usrcb    IUserCallback        `json:"-"`
@@ -31,14 +35,15 @@ type UserServiceParams struct {
 func NewUserService(params UserServiceParams) *UserService {
 
 	usrServ := UserService{
-		userMgr:  NewUserManager(params.Listenip, params.Port, params.UsrMgrcb, params.Usrcb),
-		listenip: params.Listenip,
-		port:     params.Port,
-		server:   nil,
-		ssl:      true,
-		certFile: params.CertFile,
-		keyFile:  params.KeyFile,
-		callback: params.Servcb,
+		userMgr:       NewUserManager(params.Listenip, params.Port, params.UsrMgrcb, params.Usrcb),
+		listenip:      params.Listenip,
+		port:          params.Port,
+		server:        nil,
+		ssl:           true,
+		certFile:      params.CertFile,
+		keyFile:       params.KeyFile,
+		callback:      params.Servcb,
+		appLoginInfos: make(map[string]AppLoginInfo),
 	}
 
 	return &usrServ
@@ -79,4 +84,8 @@ func (u *UserService) Release() {
 	u.userMgr.Release()
 
 	log.Debug("UserService release.")
+}
+
+func (u *UserService) AddAppLoginInfo(info AppLoginInfo) {
+	u.appLoginInfos[info.AppId] = info
 }
