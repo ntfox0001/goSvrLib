@@ -6,8 +6,9 @@ import (
 
 	"goSvrLib/commonError"
 
-	_ "github.com/go-sql-driver/mysql"
 	"goSvrLib/log"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type DbConfig struct {
@@ -29,7 +30,7 @@ type Database struct {
 //
 func NewDatabase(ip, port, user, password, database string) (*Database, error) {
 
-	dbConnStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4", user, password, ip, port, database)
+	dbConnStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8", user, password, ip, port, database)
 	if sqldb, err := sql.Open("mysql", dbConnStr); err == nil {
 
 		db := &Database{
