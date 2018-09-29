@@ -48,7 +48,7 @@ func (*PaySystem) Run() {
 	_self.server.Start()
 }
 
-// 设置一个微信支付回调，回调的参数是一个WxPayNotifyReq
+// 设置一个微信支付回调，回调的参数是一个 PaySystemNotify，当支付成功时调用
 func (*PaySystem) SetWxCallbackFunc(wxCallback *selectCaseInterface.CallbackHandler) {
 	_self.wxCallback = wxCallback
 

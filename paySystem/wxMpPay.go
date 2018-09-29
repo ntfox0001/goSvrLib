@@ -219,10 +219,11 @@ func (*WxMpPay) wxNotifyReq(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		notify := payDataStruct.PaySystemWxNotify{
-			WxPayNotifyReq: req,
-			ProductId:      wxpaybill.ProductId,
-			UserId:         wxpaybill.UserId,
+		notify := payDataStruct.PaySystemNotify{
+			ExtentData: req,
+			ProductId:  wxpaybill.ProductId,
+			UserId:     wxpaybill.UserId,
+			PayType:    payDataStruct.PaySystemNotify_PayType_Wx,
 		}
 		log.Info("wxPay success", "data", notify)
 		// 发送回调
