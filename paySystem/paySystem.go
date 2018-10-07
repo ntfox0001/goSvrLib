@@ -1,12 +1,12 @@
 package paySystem
 
 import (
+	"fmt"
 	"goSvrLib/commonError"
 	"goSvrLib/network"
 	"goSvrLib/paySystem/payDataStruct"
 	"goSvrLib/selectCase/selectCaseInterface"
 	"goSvrLib/util"
-	"net/url"
 
 	"goSvrLib/log"
 )
@@ -18,6 +18,10 @@ type PaySystem struct {
 	goPool      *util.GoroutinePool
 	wxCallback  *selectCaseInterface.CallbackHandler
 }
+
+const (
+	WxNotifyPath = "wxPayNotify"
+)
 
 var _self *PaySystem
 
@@ -35,6 +39,8 @@ func (*PaySystem) Initial(listenip, port string, goPoolSize, execSize int) error
 	_self.server = network.NewServer(listenip, port)
 	_self.goPool = util.NewGoPool("PaySystem", goPoolSize, execSize)
 
+	// 接受微信支付服务器通知的地址
+	_self.wxNotifyUrl = fmt.Sprintf("http://%s:%s/%s", listenip, port, WxNotifyPath)
 	return nil
 }
 func (*PaySystem) Release() {
@@ -55,22 +61,13 @@ func (*PaySystem) SetWxCallbackFunc(wxCallback *selectCaseInterface.CallbackHand
 }
 
 // 添加wx支付数据，wxCallback当微信服务器返回支付成功时，PaySystem会先验证消息，更新数据库，然后调用这个函数
-func (*PaySystem) AddWxPay(appId string, mchId string, mckKey string, wxNotifyUrl string) error {
+func (*PaySystem) AddWxPay(appId string, mchId string, mckKey string) error {
 	if _, ok := _self.wxMpPayMap[appId]; ok {
 		return commonError.NewStringErr("There is AppId already:" + appId)
 	}
-	u, err := url.Parse(wxNotifyUrl)
-	if err != nil {
-		return err
-	}
-	path := u.EscapedPath()
-	if path == "" {
-		return commonError.NewStringErr("EscapedPath is empty:" + wxNotifyUrl)
-	}
 
-	pay := NewWxMpPay(appId, mchId, mckKey, wxNotifyUrl)
-	_self.server.RegisterRouter(path, network.RouterHandler{ProcessHttpFunc: pay.wxNotifyReq})
-
+	pay := NewWxMpPay(appId, mchId, mckKey, _self.wxNotifyUrl)
+	_self.server.RegisterRouter(WxNotifyPath, network.RouterHandler{ProcessHttpFunc: wxNotifyReq})
 	_self.wxMpPayMap[appId] = pay
 
 	return nil
@@ -93,4 +90,8 @@ func (*PaySystem) WxPay(pd payDataStruct.ClientWxPayReq, cb *selectCaseInterface
 
 	}
 	return nil
+}
+
+func (*PaySystem) ApplePay(pd payDataStruct.ClientWxPayReq) {
+
 }

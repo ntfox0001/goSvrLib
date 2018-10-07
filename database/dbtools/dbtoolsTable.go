@@ -33,10 +33,8 @@ func NewTable(dbTable interface{}) (*Table, error) {
 		fieldName := sf.Type.Name()
 		switch fieldName {
 		case "TableName":
-			// 只保存第一个
-			if table.Name == "" {
-				table.Name = sf.Name
-			}
+			// 如果有多个，那么保存最后一个
+			table.Name = sf.Name
 		case "CreateProcedure":
 			if p, err := NewProcedure(&sf); err != nil {
 				log15.Error("Procedure error", "err", err.Error())
