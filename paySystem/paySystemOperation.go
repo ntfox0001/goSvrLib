@@ -17,21 +17,22 @@ import (
 	这里的函数都是同步函数
 */
 
-// 创建新订单，等待用户支付，一般用于微信支付等
-// 需要预先向第三方支付服务器申请预支付id，
-// 用于客户端拉起第三方支付程序
+// 创建新订单，微信等是被动验证，苹果是主动验证
 // extentInfo 可以保存appid或者receipt
-func (*PaySystem) PayRecord_NewBill(userId int, billId string, productId string, fee int, billType string, extentInfo string) error {
+func (*PaySystem) PayRecord_NewBill(userId int, billId string, productId string, fee int, billType string, extentInfo string, passive bool) error {
+	status := payDataStruct.PayStatusWaitForUserPay
+	if !passive {
+		status = payDataStruct.PayStatusWaitForVerification
+	}
 	// inuserId int,inbillId varchar(256),intransactionId text,inproductId varchar(32),intotalFee int,instatus varchar(32),increateTime int,infinishTime int,inextentInfo text,inbillType varchar(32)
 	op := database.Instance().NewOperation("call PayBillTable_Insert(?,?,?,?,?,?,?,?,?,?)",
-		userId, billId, "", productId, fee, payDataStruct.PayStatusWaitForUserPay, time.Now().Unix(), 0, extentInfo, billType)
+		userId, billId, "", productId, fee, status, time.Now().Unix(), 0, extentInfo, billType)
 
 	_, err := database.Instance().SyncExecOperation(op)
-
 	return err
 }
 
-// 设置订单支付成功，下一步回调逻辑层，完成订单
+// 设置订单支付成功
 func (*PaySystem) PayRecord_SetPayStatusSuccess(billId string, transactionId string) error {
 	//inbillId varchar(256), intransactionId varchar(256),instatus tinyint
 	op := database.Instance().NewOperation("call PayBillTable_PaySuccess(?,?,?)", billId, transactionId, payDataStruct.PayStatusSuccess)
@@ -47,13 +48,7 @@ func (*PaySystem) PayRecord_SetError(billId string, errInfo string) error {
 	return err
 }
 
-// 完成订单
-func (*PaySystem) PayRecord_Finish(billId string) error {
-	// inbillId varchar(256),instatus varchar(32)
-	op := database.Instance().NewOperation("call PayBillTable_UpdateStatusByBillId(?,?)", billId, payDataStruct.PayStatusFinished)
-	_, err := database.Instance().SyncExecOperation(op)
-	return err
-}
+
 
 // 查询订单
 func (*PaySystem) PayRecord_Query(billId string) (payDataStruct.PayBillData, error) {

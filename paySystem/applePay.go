@@ -20,7 +20,7 @@ func (ps *PaySystem) BeginPay(userId int, receipt string, productId string) {
 
 	// 保存订单数据
 	billId := util.GetUniqueId()
-	if err := _self.PayRecord_NewBill(userId, billId, productId, 0, "APPLE", receipt); err != nil {
+	if err := _self.PayRecord_NewBill(userId, billId, productId, 0, "APPLE", receipt, false); err != nil {
 		log.Warn("apple NewBill failed.", "receipt", receipt, "userId", userId)
 		return
 	}

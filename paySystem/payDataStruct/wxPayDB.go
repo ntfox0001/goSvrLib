@@ -6,7 +6,6 @@ const (
 	PayStatusWaitForUserPay      = "WaitForUserPay"      // 等待用户支付
 	PayStatusWaitForVerification = "WaitForVerification" // 等待服务器验证结果
 	PayStatusSuccess             = "PaySuccess"          // 支付成功
-	PayStatusFinished            = "Finished"            // 逻辑层调用结束
 )
 
 // 支付数据库结构
@@ -24,5 +23,5 @@ type PayBillData struct {
 	BillType                          string                      `json:"billType" dbdef:"varchar(32)"`      // 订单类型
 	procedure_PayBillTable_PaySuccess dbtoolsData.CreateProcedure `dbsql:"create procedure PayBillTable_PaySuccess(inbillId varchar(256), intransactionId varchar(256),instatus tinyint) begin update PayBillTable set transactionId=intransactionId, status=instatus, finishTime=UNIX_TIMESTAMP() where billId=inbillId;end"`
 	// load只加载过去3天的未完成订单
-	procedure_PayBillTable_Load dbtoolsData.CreateProcedure `dbsql:"create procedure PayBillTable_Load() begin select * from PayBillTable where createTime>(UNIX_TIMESTAMP() - 60 * 60 * 24 * 3) and (status = 'WaitForUserPay' or status = 'WaitForVerification' or status = 'PaySuccess');end"`
+	procedure_PayBillTable_Load dbtoolsData.CreateProcedure `dbsql:"create procedure PayBillTable_Load() begin select * from PayBillTable where createTime>(UNIX_TIMESTAMP() - 60 * 60 * 24 * 3) and (status = 'WaitForVerification');end"`
 }

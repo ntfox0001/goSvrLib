@@ -100,7 +100,7 @@ func (w *WxMpPay) BeginPay(pd payDataStruct.ClientWxPayReq) (*payDataStruct.Clie
 		// 都成功了
 		// 更新数据库
 		extentInfo := w.appId // 额外信息保存appid
-		if err := _self.PayRecord_NewBill(pd.UserId, req.OutTradeNo, pd.ProductId, pd.TotalFee, "WX", extentInfo); err != nil {
+		if err := _self.PayRecord_NewBill(pd.UserId, req.OutTradeNo, pd.ProductId, pd.TotalFee, "WX", extentInfo, true); err != nil {
 			log.Warn("wx pay PayRecord_NewBill failed.", "err", err.Error())
 			return nil, err
 		}
@@ -133,7 +133,7 @@ func wxNotifyReq(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// 订单状态必须是等待用户支付
 		if pd.Status != payDataStruct.PayStatusWaitForUserPay {
-			if pd.Status == payDataStruct.PayStatusFinished {
+			if pd.Status == payDataStruct.PayStatusSuccess {
 				// 多余的补单，直接忽略
 				return
 			}
@@ -143,7 +143,7 @@ func wxNotifyReq(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 设置订单完结
-		_self.PayRecord_Finish(pd.BillId)
+		_self.PayRecord_SetPayStatusSuccess(pd.BillId, req.TransactionId)
 
 		// 调用通知函数
 		if _self.wxCallback == nil {
@@ -162,7 +162,6 @@ func wxNotifyReq(w http.ResponseWriter, r *http.Request) {
 		// 发送回调
 		_self.wxCallback.SendReturnMsgNoReturn(notify)
 
-		log.Info("wxPay success", "data", notify)
 		// 返回成功
 		io.WriteString(w, WxNotifySuccessResp)
 	}
