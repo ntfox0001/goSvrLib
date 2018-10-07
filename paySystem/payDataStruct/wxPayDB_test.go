@@ -8,7 +8,7 @@ import (
 )
 
 func Test_BuildClientDB(t *testing.T) {
-	payDb := payDataStruct.WxPayBill{}
+	payDb := payDataStruct.PayBillData{}
 
 	dbtools.Instance().Initial("47.92.154.113", "3306", "root", "Lynx1234", "golibdb", 10, 10)
 
