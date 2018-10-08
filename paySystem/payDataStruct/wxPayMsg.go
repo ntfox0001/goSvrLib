@@ -6,7 +6,7 @@ import (
 
 // 微信统一下单请求，发送时使用了json序列化，所以这里必须标注json tag
 type WxUnifiedorderReq struct {
-	ClientWxPayBase
+	WxPayBase
 	AppId      string `json:"appid"`        //公众账号ID
 	MchId      string `json:"mch_id"`       //商户号
 	NonceStr   string `json:"nonce_str"`    //随机字符串
@@ -32,7 +32,7 @@ type WxUnifiedorderResp struct {
 	PrePayId   string   `json:"prePayId" xml:"prepay_id"`                //预支付交易会话标识
 }
 
-type ClientWxPayBase struct {
+type WxPayBase struct {
 	DeviceInfo     string `json:"device_info"`      //设备号 可不填
 	Attach         string `json:"attach"`           //附加数据 可不填
 	Body           string `json:"body"`             //商品描述 可不填
@@ -42,19 +42,26 @@ type ClientWxPayBase struct {
 	OpenId         string `json:"openid"`           //用户标识 必填
 }
 
+// 微信支付消息 ---------------------------------------------------------------------------------------
 // 客户端发起发起微信支付请求所需数据
-type ClientWxPayReq struct {
-	ClientWxPayBase
+type WxPayReqData struct {
+	WxPayBase
 	UserId int    `json:"userId,string"` // 玩家id 必填
 	AppId  string `json:"appId"`         // 支付使用的appid
 }
 
 // 返回客户端的数据
-type ClientWxPayResp struct {
-	WxUnifiedorderResp
-	UserId  int    `json:"userId,string"` // 玩家id
-	BillId  string `json:"billId"`        // 商户订单号，用于查询订单是否支付成功
-	ErrorId string `json:"errorId"`       //用来返回程序中其他错误
+type WxPayResp struct {
+	PrePayId string `json:"prePayId"`
+	ErrorId  string `json:"errorId"` //用来返回程序中其他错误
+}
+
+type ApplePayReq struct {
+	UserId    int    `json:"userId"`
+	Receipt   string `json:"receipt"`
+	ProductId string `json:"productId"`
+}
+type ApplePayResp struct {
 }
 
 //----------------------------------------------------------------------------------------------------------------

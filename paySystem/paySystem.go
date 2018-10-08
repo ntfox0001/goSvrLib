@@ -73,8 +73,8 @@ func (*PaySystem) AddWxPay(appId string, mchId string, mckKey string) error {
 	return nil
 }
 
-// 发起一笔微信支付,通过cb，返回一个*ClientWxPayResp类型数据
-func (*PaySystem) WxPay(pd payDataStruct.ClientWxPayReq, cb *selectCaseInterface.CallbackHandler) error {
+// 发起一笔微信支付,通过cb，返回一个prePayId string
+func (*PaySystem) WxPay(pd payDataStruct.WxPayReqData, cb *selectCaseInterface.CallbackHandler) error {
 
 	if pay, ok := _self.wxMpPayMap[pd.AppId]; !ok {
 		return commonError.NewStringErr("appid does not exist:" + pd.AppId)
@@ -82,7 +82,7 @@ func (*PaySystem) WxPay(pd payDataStruct.ClientWxPayReq, cb *selectCaseInterface
 		_self.goPool.Go(func(data interface{}) {
 			resp, err := pay.BeginPay(pd)
 			if err != nil {
-				cb.SendReturnMsgNoReturn(&payDataStruct.ClientWxPayResp{ErrorId: err.Error()})
+				log.Warn("wx pay failed.", "err", err.Error())
 			} else {
 				cb.SendReturnMsgNoReturn(resp)
 			}
@@ -92,6 +92,9 @@ func (*PaySystem) WxPay(pd payDataStruct.ClientWxPayReq, cb *selectCaseInterface
 	return nil
 }
 
-func (*PaySystem) ApplePay(pd payDataStruct.ClientWxPayReq) {
+func (*PaySystem) ApplePay(userId int, receipt string, cb *selectCaseInterface.CallbackHandler) {
+	_self.goPool.Go(func(data interface{}) {
 
+		//_self.BeginPay()
+	}, nil)
 }

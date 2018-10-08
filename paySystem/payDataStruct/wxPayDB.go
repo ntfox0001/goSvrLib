@@ -22,6 +22,6 @@ type PayBillData struct {
 	ExtentInfo                        string                      `json:"extentInfo" dbdef:"text"`           // 保存额外信息，比如第三方appid，receipt
 	BillType                          string                      `json:"billType" dbdef:"varchar(32)"`      // 订单类型
 	procedure_PayBillTable_PaySuccess dbtoolsData.CreateProcedure `dbsql:"create procedure PayBillTable_PaySuccess(inbillId varchar(256), intransactionId varchar(256),instatus tinyint) begin update PayBillTable set transactionId=intransactionId, status=instatus, finishTime=UNIX_TIMESTAMP() where billId=inbillId;end"`
-	// load只加载过去3天的未完成订单
-	procedure_PayBillTable_Load dbtoolsData.CreateProcedure `dbsql:"create procedure PayBillTable_Load() begin select * from PayBillTable where createTime>(UNIX_TIMESTAMP() - 60 * 60 * 24 * 3) and (status = 'WaitForVerification');end"`
+	// load只加载过去3天的未完成订单，只有主动订单才需要加载 (WaitForVerification)
+	procedure_PayBillTable_Load dbtoolsData.CreateProcedure `dbsql:"create procedure PayBillTable_Load() begin select * from PayBillTable where createTime>(UNIX_TIMESTAMP() - 60 * 60 * 24 * 3) and status = 'WaitForVerification';end"`
 }

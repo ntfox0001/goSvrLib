@@ -52,49 +52,49 @@ func NewWxMpPay(appId string, mchId string, mckKey string, notifyUrl string) *Wx
 	return wp
 }
 
-//发起一笔用户微信支付
-func (w *WxMpPay) BeginPay(pd payDataStruct.ClientWxPayReq) (*payDataStruct.ClientWxPayResp, error) {
+//发起一笔用户微信支付， 返回prePayId
+func (w *WxMpPay) BeginPay(pd payDataStruct.WxPayReqData) (string, error) {
 	req := payDataStruct.WxUnifiedorderReq{
-		ClientWxPayBase: pd.ClientWxPayBase,
-		AppId:           w.appId,
-		MchId:           w.mchId,
-		Key:             w.mckKey,
-		NonceStr:        "wxpay_1122h78",
-		OutTradeNo:      util.GetUniqueId(),
-		TradeType:       "JSAPI",
-		NotifyUrl:       w.notifyUrl,
+		WxPayBase:  pd.WxPayBase,
+		AppId:      w.appId,
+		MchId:      w.mchId,
+		Key:        w.mckKey,
+		NonceStr:   "wxpay_1122h78",
+		OutTradeNo: util.GetUniqueId(),
+		TradeType:  "JSAPI",
+		NotifyUrl:  w.notifyUrl,
 	}
 
 	// 创建签名数据
 	if xmlStr, err := util.MakeWxSign(req); err != nil {
 		log.Error("MakeWxSign error", "err", err.Error())
-		return nil, err
+		return "", err
 	} else {
 		//向微信服务器发送“统一下单”请求
 		wxRespStr, err := network.SyncHttpPost(WxPreBillUrl, xmlStr, network.ContentTypeText)
 		fmt.Println(wxRespStr)
 		if err != nil {
 			log.Error("SyncHttpPost error", "err", err.Error())
-			return nil, err
+			return "", err
 		}
 		// 解析微信返回值
 		var resp payDataStruct.WxUnifiedorderResp
 		if err := xml.Unmarshal([]byte(wxRespStr), &resp); err != nil {
 			// 如果格式解析失败，那是一个严重错误
 			log.Error("Failed to Unmarshal of WxMpPay resp.", "resp", wxRespStr)
-			return nil, err
+			return "", err
 		}
 
 		// 检查微信返回值, 通信成功标识
 		if resp.ReturnCode != "SUCCESS" {
 			log.Warn("wx pay failed: ReturnCode", "resp", resp)
-			return nil, err
+			return "", err
 		}
 
 		// 检查微信返回值，订单成功标识
 		if resp.ResultCode != "SUCCESS" {
 			log.Warn("wx pay failed: ResultCode", "resp", resp)
-			return nil, err
+			return "", err
 		}
 
 		// 都成功了
@@ -102,15 +102,10 @@ func (w *WxMpPay) BeginPay(pd payDataStruct.ClientWxPayReq) (*payDataStruct.Clie
 		extentInfo := w.appId // 额外信息保存appid
 		if err := _self.PayRecord_NewBill(pd.UserId, req.OutTradeNo, pd.ProductId, pd.TotalFee, "WX", extentInfo, true); err != nil {
 			log.Warn("wx pay PayRecord_NewBill failed.", "err", err.Error())
-			return nil, err
+			return "", err
 		}
-		// 返回resp,等待用户付款，快输入密码，快快快~
-		clientResp := payDataStruct.ClientWxPayResp{
-			WxUnifiedorderResp: resp,
-			UserId:             pd.UserId,
-			BillId:             req.OutTradeNo,
-		}
-		return &clientResp, err
+		// 返回,等待用户付款，快输入密码，快快快~
+		return resp.PrePayId, err
 
 	}
 

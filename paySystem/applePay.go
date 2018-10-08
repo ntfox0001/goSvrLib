@@ -57,6 +57,7 @@ func getReceiptResp(receipt string) (payDataStruct.IapPayDataResp, error) {
 		return payDataStruct.IapPayDataResp{}, commonError.NewStringErr("the format of sandbox's resp failed.")
 	}
 
+	// check status
 	if resp.Status == 21007 {
 		// 这是一个正式服的收据
 		buyRespStr, err := network.SyncHttpPost(buyUrl, reqStr, network.ContentTypeJson)
