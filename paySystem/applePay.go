@@ -7,34 +7,65 @@ import (
 	"goSvrLib/network"
 	"goSvrLib/paySystem/payDataStruct"
 	"goSvrLib/util"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 )
 
 const (
-	sandUrl = "https://sandbox.itunes.apple.com/verifyReceipt"
-	buyUrl  = "https://buy.itunes.apple.com/verifyReceipt"
+	sandUrl  = "https://sandbox.itunes.apple.com/verifyReceipt"
+	buyUrl   = "https://buy.itunes.apple.com/verifyReceipt"
+	netError = 1
 )
 
-func (ps *PaySystem) BeginPay(userId int, receipt string, productId string) {
+type applePayItem struct {
+	UserId        int
+	Receipt       string
+	ProductId     string
+	RepeatCount   int // 重试次数
+	updateManager *util.UpdateManager
+}
 
+func newApplePayItem(userId int, receipt string, productId string) *applePayItem {
+	item := &applePayItem{
+		UserId:      userId,
+		Receipt:     receipt,
+		ProductId:   productId,
+		RepeatCount: 0,
+	}
+
+	item.updateManager = util.NewUpdateManager2("applePay", time.Second, item.update)
+
+	return item
+}
+
+func (i *applePayItem) update() {
+	if i.RepeatCount
+}
+
+func (i *applePayItem) beginPay() {
 	// 保存订单数据
 	billId := util.GetUniqueId()
-	if err := _self.PayRecord_NewBill(userId, billId, productId, 0, "APPLE", receipt, false); err != nil {
-		log.Warn("apple NewBill failed.", "receipt", receipt, "userId", userId)
+	if err := _self.PayRecord_NewBill(i.UserId, billId, i.ProductId, 0, "APPLE", i.Receipt, false); err != nil {
+		log.Warn("apple NewBill failed.", "receipt", i.Receipt, "userId", i.UserId)
 		return
 	}
 
-	if resp, err := getReceiptResp(receipt); err != nil {
-		log.Warn(err.Error(), "userId", userId)
+	// 获得结果
+	if resp, err := i.getReceiptResp(i.Receipt); err != nil {
+		log.Warn(err.Error(), "userId", i.UserId)
+		if err.(commonError.CommError).GetType() == netError {
+
+		}
 		return
 	} else {
-		validatingReceipt(userId, billId, productId, resp)
+		// 检查
+		i.validatingReceipt(i.UserId, billId, i.ProductId, resp)
 	}
 }
 
 // 验证收据是否有效
-func getReceiptResp(receipt string) (payDataStruct.IapPayDataResp, error) {
+func (i *applePayItem) getReceiptResp(receipt string) (payDataStruct.IapPayDataResp, error) {
 	req := payDataStruct.IapPayDataReq{
 		Receipt_data: receipt,
 	}
@@ -42,19 +73,19 @@ func getReceiptResp(receipt string) (payDataStruct.IapPayDataResp, error) {
 	reqStr, err := jsoniter.ConfigCompatibleWithStandardLibrary.MarshalToString(req)
 	if err != nil {
 		log.Warn("req marshal failed.", "req", reqStr)
-		return payDataStruct.IapPayDataResp{}, commonError.NewStringErr("req marshal failed.")
+		return payDataStruct.IapPayDataResp{}, commonError.NewCommErr("req marshal failed.", 0)
 	}
 
 	sandRespStr, err := network.SyncHttpPost(sandUrl, reqStr, network.ContentTypeJson)
 	if err != nil {
 		log.Warn("sandbox http post failed", "err", err.Error())
-		return payDataStruct.IapPayDataResp{}, commonError.NewStringErr("sandbox http post failed")
+		return payDataStruct.IapPayDataResp{}, commonError.NewCommErr("sandbox http post failed", netError)
 	}
 
 	resp := payDataStruct.IapPayDataResp{}
 	if err := jsoniter.ConfigCompatibleWithStandardLibrary.UnmarshalFromString(sandRespStr, &resp); err != nil {
 		log.Warn("the format of sandbox's resp failed.")
-		return payDataStruct.IapPayDataResp{}, commonError.NewStringErr("the format of sandbox's resp failed.")
+		return payDataStruct.IapPayDataResp{}, commonError.NewCommErr("the format of sandbox's resp failed.", 0)
 	}
 
 	// check status
@@ -63,13 +94,13 @@ func getReceiptResp(receipt string) (payDataStruct.IapPayDataResp, error) {
 		buyRespStr, err := network.SyncHttpPost(buyUrl, reqStr, network.ContentTypeJson)
 		if err != nil {
 			log.Warn("http post failed", "err", err.Error())
-			return payDataStruct.IapPayDataResp{}, commonError.NewStringErr("http post failed.")
+			return payDataStruct.IapPayDataResp{}, commonError.NewCommErr("http post failed.", netError)
 		}
 
 		resp = payDataStruct.IapPayDataResp{}
 		if err := jsoniter.ConfigCompatibleWithStandardLibrary.UnmarshalFromString(buyRespStr, &resp); err != nil {
 			log.Warn("the format of resp failed.")
-			return payDataStruct.IapPayDataResp{}, commonError.NewStringErr("the format of resp failed.")
+			return payDataStruct.IapPayDataResp{}, commonError.NewCommErr("the format of resp failed.", 0)
 		}
 	}
 
@@ -77,7 +108,7 @@ func getReceiptResp(receipt string) (payDataStruct.IapPayDataResp, error) {
 }
 
 // 验证收据是否正确
-func validatingReceipt(userId int, billId string, productId string, resp payDataStruct.IapPayDataResp) {
+func (i *applePayItem) validatingReceipt(userId int, billId string, productId string, resp payDataStruct.IapPayDataResp) {
 	if resp.Status == 0 {
 		transaction_id := ""
 		for _, v := range resp.Receipt.In_app {

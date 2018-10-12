@@ -141,7 +141,7 @@ func wxNotifyReq(w http.ResponseWriter, r *http.Request) {
 		_self.PayRecord_SetPayStatusSuccess(pd.BillId, req.TransactionId)
 
 		// 调用通知函数
-		if _self.wxCallback == nil {
+		if _self.callback == nil {
 			log.Error("WxCallback is nil")
 			io.WriteString(w, WxNotifyFailResp)
 			return
@@ -155,7 +155,7 @@ func wxNotifyReq(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 发送回调
-		_self.wxCallback.SendReturnMsgNoReturn(notify)
+		_self.callback.SendReturnMsgNoReturn(notify)
 
 		// 返回成功
 		io.WriteString(w, WxNotifySuccessResp)

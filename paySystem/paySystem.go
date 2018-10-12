@@ -16,7 +16,7 @@ type PaySystem struct {
 	server      *network.Server
 	wxMpPayMap  map[string]*WxMpPay
 	goPool      *util.GoroutinePool
-	wxCallback  *selectCaseInterface.CallbackHandler
+	callback    *selectCaseInterface.CallbackHandler // 支付成功时，调用
 }
 
 const (
@@ -48,15 +48,15 @@ func (*PaySystem) Release() {
 }
 func (*PaySystem) Run() {
 
-	if _self.wxCallback == nil {
+	if _self.callback == nil {
 		log.Warn("PaySystem wxCallback is nil.")
 	}
 	_self.server.Start()
 }
 
 // 设置一个微信支付回调，回调的参数是一个 PaySystemNotify，当支付成功时调用
-func (*PaySystem) SetWxCallbackFunc(wxCallback *selectCaseInterface.CallbackHandler) {
-	_self.wxCallback = wxCallback
+func (*PaySystem) SetCallbackFunc(callback *selectCaseInterface.CallbackHandler) {
+	_self.callback = callback
 
 }
 
@@ -73,7 +73,7 @@ func (*PaySystem) AddWxPay(appId string, mchId string, mckKey string) error {
 	return nil
 }
 
-// 发起一笔微信支付,通过cb，返回一个prePayId string
+// 发起一笔微信支付,通过cb，返回一个prePayId string，用于客户端拉起微信
 func (*PaySystem) WxPay(pd payDataStruct.WxPayReqData, cb *selectCaseInterface.CallbackHandler) error {
 
 	if pay, ok := _self.wxMpPayMap[pd.AppId]; !ok {
@@ -92,9 +92,9 @@ func (*PaySystem) WxPay(pd payDataStruct.WxPayReqData, cb *selectCaseInterface.C
 	return nil
 }
 
-func (*PaySystem) ApplePay(userId int, receipt string, cb *selectCaseInterface.CallbackHandler) {
+func (*PaySystem) ApplePay(userId int, receipt string, productId string) {
+	appleItem := newApplePayItem(userId, receipt, productId)
 	_self.goPool.Go(func(data interface{}) {
-
-		//_self.BeginPay()
+		
 	}, nil)
 }
