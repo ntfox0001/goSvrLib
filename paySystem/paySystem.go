@@ -17,7 +17,6 @@ type PaySystem struct {
 	wxMpPayMap  map[string]*WxMpPay
 	goPool      *util.GoroutinePool
 	callback    *selectCaseInterface.CallbackHandler // 支付成功时，调用
-	applePayMap map[string]*applePayItem
 }
 
 const (
@@ -29,13 +28,13 @@ var _self *PaySystem
 func Instance() *PaySystem {
 	if _self == nil {
 		_self = &PaySystem{
-			wxMpPayMap:  make(map[string]*WxMpPay),
-			applePayMap: make(map[string]*applePayItem),
+			wxMpPayMap: make(map[string]*WxMpPay),
 		}
 	}
 	return _self
 }
 
+// 支付系统初始化，goPoolSize在支付量很大时，要适当提高
 func (*PaySystem) Initial(listenip, port string, goPoolSize, execSize int) error {
 
 	_self.server = network.NewServer(listenip, port)
