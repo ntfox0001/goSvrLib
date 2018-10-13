@@ -138,7 +138,14 @@ func (u *User) AttachWSAcceptConn(acceptConn networkInterface.IMsgHandler) {
 	})
 	u.attachACId[6] = u.selectLoop.AddSelectCase(reflect.ValueOf(u.acceptJsonMsgChan), func(data interface{}) bool {
 		//u.Msghandler().DispatchJsonMsg(data.(map[string]interface{}))
+		if u.userInfo == nil || u.userInfo.usrData.UserId == 0 {
+			log.Warn("User need initial before accept msg.", "msg", data)
+			return true
+		}
+
 		if msg, ok := data.(map[string]interface{}); ok {
+			// 强制设置userId
+			msg["UserId"] = u.userInfo.usrData.UserId
 			if msgId, ok := msg["msgId"]; ok {
 				if sMsgId, ok := msgId.(string); ok {
 					u.SelectLoopHelper().SendMsgToMe(selectCaseInterface.NewEventChanMsg(sMsgId, nil, data))
