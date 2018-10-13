@@ -18,50 +18,105 @@ const (
 	netError = 1
 )
 
+var (
+	repeatTimes = []int64{0, 5, 10, 15, 60, 300, 3600} // 重试次数对应的时间
+)
+
 type applePayItem struct {
-	UserId        int
-	Receipt       string
-	ProductId     string
-	RepeatCount   int // 重试次数
+	billId        string // 订单id
+	userId        int
+	receipt       string
+	productId     string
+	repeatCount   int // 重试次数
 	updateManager *util.UpdateManager
+	createTime    int64 // 用于计算更新时间
+	closeCh       chan interface{}
 }
 
 func newApplePayItem(userId int, receipt string, productId string) *applePayItem {
 	item := &applePayItem{
-		UserId:      userId,
-		Receipt:     receipt,
-		ProductId:   productId,
-		RepeatCount: 0,
+		billId:      util.GetUniqueId(),
+		userId:      userId,
+		receipt:     receipt,
+		productId:   productId,
+		repeatCount: 0,
+
+		createTime: time.Now().Unix(),
 	}
 
-	item.updateManager = util.NewUpdateManager2("applePay", time.Second, item.update)
+	item.updateManager = util.NewUpdateManager2("applePay", time.Second, item._update)
 
 	return item
 }
 
-func (i *applePayItem) update() {
-	if i.RepeatCount
+// 开始
+func (i *applePayItem) run() {
+	i.updateManager.Run(time.Second)
+}
+
+// 等待这个支付过程退出
+func (i *applePayItem) waitForClose() {
+	<-i.closeCh
+}
+func (i *applePayItem) _getRepeatTime() int64 {
+	rtLen := len(repeatTimes)
+	count := i.repeatCount
+	if i.repeatCount >= rtLen {
+		count = rtLen - 1
+	}
+	return repeatTimes[count]
+}
+
+func (i *applePayItem) _update() {
+	if time.Now().Unix()-i.createTime >= i._getRepeatTime() {
+		i.repeatCount++
+
+		i.beginPay()
+	}
 }
 
 func (i *applePayItem) beginPay() {
 	// 保存订单数据
-	billId := util.GetUniqueId()
-	if err := _self.PayRecord_NewBill(i.UserId, billId, i.ProductId, 0, "APPLE", i.Receipt, false); err != nil {
-		log.Warn("apple NewBill failed.", "receipt", i.Receipt, "userId", i.UserId)
+	if err := _self.PayRecord_NewBill(i.userId, i.billId, i.productId, 0, "APPLE", i.receipt, false); err != nil {
+		log.Warn("apple NewBill failed.", "receipt", i.receipt, "userId", i.userId)
 		return
 	}
 
 	// 获得结果
-	if resp, err := i.getReceiptResp(i.Receipt); err != nil {
-		log.Warn(err.Error(), "userId", i.UserId)
-		if err.(commonError.CommError).GetType() == netError {
-
+	if resp, err := i.getReceiptResp(i.receipt); err != nil {
+		log.Warn(err.Error(), "userId", i.userId)
+		if err.(commonError.CommError).GetType() != netError {
+			// 无法挽回的错误，关闭
+			i.close()
 		}
 		return
 	} else {
 		// 检查
-		i.validatingReceipt(i.UserId, billId, i.ProductId, resp)
+		if err := i.validatingReceipt(i.userId, i.billId, i.productId, resp); err == nil {
+			if _self.callback == nil {
+				log.Error("WxCallback is nil")
+				return
+			}
+
+			notify := payDataStruct.PaySystemNotify{
+				ExtentData: nil,
+				ProductId:  i.productId,
+				UserId:     i.userId,
+				PayType:    payDataStruct.PaySystemNotify_PayType_Apple,
+			}
+
+			// 发送回调
+			_self.callback.SendReturnMsgNoReturn(notify)
+		}
+		// 这里的错误都是无法挽回的，所以不管是否成功，都退出
+		i.close()
 	}
+}
+
+// 关闭支付过程
+func (i *applePayItem) close() {
+	i.updateManager.Close()
+	i.closeCh <- struct{}{}
 }
 
 // 验证收据是否有效
@@ -108,20 +163,29 @@ func (i *applePayItem) getReceiptResp(receipt string) (payDataStruct.IapPayDataR
 }
 
 // 验证收据是否正确
-func (i *applePayItem) validatingReceipt(userId int, billId string, productId string, resp payDataStruct.IapPayDataResp) {
+func (i *applePayItem) validatingReceipt(userId int, billId string, productId string, resp payDataStruct.IapPayDataResp) error {
 	if resp.Status == 0 {
 		transaction_id := ""
 		for _, v := range resp.Receipt.In_app {
 			if productId == v.Product_id {
 				transaction_id = v.Transaction_id
+				break
 			}
+		}
+		if transaction_id == "" {
+			log.Error("transaction does not found.")
+			return commonError.NewStringErr("transaction does not found.")
 		}
 		if err := _self.PayRecord_SetPayStatusSuccess(billId, transaction_id); err != nil {
 			log.Error("apple SetPayStatusSuccess failed", "err", err.Error())
+			return commonError.NewStringErr("apple SetPayStatusSuccess failed")
 		}
 	} else {
 		if err := _self.PayRecord_SetError(billId, fmt.Sprint(resp.Status)); err != nil {
 			log.Error("apple SetError failed", "err", err.Error())
+			return commonError.NewStringErr("apple SetError failed")
 		}
+
 	}
+	return nil
 }

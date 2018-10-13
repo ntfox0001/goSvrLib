@@ -17,6 +17,7 @@ type PaySystem struct {
 	wxMpPayMap  map[string]*WxMpPay
 	goPool      *util.GoroutinePool
 	callback    *selectCaseInterface.CallbackHandler // 支付成功时，调用
+	applePayMap map[string]*applePayItem
 }
 
 const (
@@ -28,7 +29,8 @@ var _self *PaySystem
 func Instance() *PaySystem {
 	if _self == nil {
 		_self = &PaySystem{
-			wxMpPayMap: make(map[string]*WxMpPay),
+			wxMpPayMap:  make(map[string]*WxMpPay),
+			applePayMap: make(map[string]*applePayItem),
 		}
 	}
 	return _self
@@ -92,9 +94,11 @@ func (*PaySystem) WxPay(pd payDataStruct.WxPayReqData, cb *selectCaseInterface.C
 	return nil
 }
 
+// 开始验证一个客户端发过来的收据是否正确
 func (*PaySystem) ApplePay(userId int, receipt string, productId string) {
 	appleItem := newApplePayItem(userId, receipt, productId)
 	_self.goPool.Go(func(data interface{}) {
-		
+		appleItem.run()
+		appleItem.waitForClose()
 	}, nil)
 }
