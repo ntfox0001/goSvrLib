@@ -2,24 +2,51 @@ package util
 
 import (
 	"goSvrLib/log"
+	"time"
 )
 
 type UpdateManager struct {
-	name       string
-	count      uint64
-	updateFunc map[uint64][]func()
+	name        string
+	updateFuncs []func()
+	quitCh      chan interface{}
 }
 
 func NewUpdateManager(name string) *UpdateManager {
 	updateMgr := &UpdateManager{
-		name:       name,
-		count:      0,
-		updateFunc: make(map[uint64][]func()),
+		name:        name,
+		updateFuncs: make([]func(), 0, 4),
+		quitCh:      make(chan interface{}, 1),
 	}
 
 	return updateMgr
 }
+func NewUpdateManager2(name string, delta time.Duration, updateFunc func()) *UpdateManager {
+	updateMgr := NewUpdateManager(name)
+	updateMgr.Add(updateFunc)
+	updateMgr.Run(delta)
+	return updateMgr
+}
 
+// 自动调用update
+func (u *UpdateManager) Run(detla time.Duration) {
+	t := time.NewTimer(detla)
+runable:
+	for {
+		select {
+		case <-u.quitCh:
+			break runable
+		case <-t.C:
+			u.Update()
+		}
+	}
+	log.Debug("UpdateManger close", "name", u.name)
+}
+
+func (u *UpdateManager) Close() {
+	u.quitCh <- struct{}{}
+}
+
+// 手动调用注册的更新函数
 func (u *UpdateManager) Update() {
 	defer func() {
 		if err := recover(); err != nil {
@@ -27,21 +54,13 @@ func (u *UpdateManager) Update() {
 		}
 	}()
 
-	for k, v := range u.updateFunc {
-		if k == 1 || u.count%k == 0 {
-			for _, f := range v {
-				f()
-			}
-		}
+	for _, f := range u.updateFuncs {
+		f()
 	}
-	u.count++
 }
 
 // 添加一个更新项，这个更新不支持撤销
-func (u *UpdateManager) Add(interval uint64, f func()) {
-	a, ok := u.updateFunc[interval]
-	if !ok {
-		u.updateFunc[interval] = make([]func(), 0, 4)
-	}
-	u.updateFunc[interval] = append(a, f)
+func (u *UpdateManager) Add(f func()) {
+
+	u.updateFuncs = append(u.updateFuncs, f)
 }

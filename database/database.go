@@ -6,8 +6,9 @@ import (
 
 	"goSvrLib/commonError"
 
-	_ "github.com/go-sql-driver/mysql"
 	"goSvrLib/log"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type DbConfig struct {

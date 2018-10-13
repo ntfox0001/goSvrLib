@@ -30,8 +30,3 @@ type HttpMsgReqBase struct {
 type HttpMsgRespBase struct {
 	ErrorId string `json:"errorId"`
 }
-
-//通用的错误回应
-type HttpMsgErrorResp struct {
-	HttpMsgRespBase
-}

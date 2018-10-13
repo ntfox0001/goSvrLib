@@ -1,17 +1,14 @@
 package paySystem
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/xml"
 	"fmt"
-	"goSvrLib/database"
 	"goSvrLib/network"
 	"goSvrLib/paySystem/payDataStruct"
-	"goSvrLib/selectCase/selectCaseInterface"
 	"goSvrLib/util"
-	"sync/atomic"
-	"time"
+	"io"
+	"io/ioutil"
+	"net/http"
 
 	"goSvrLib/log"
 )
@@ -28,17 +25,12 @@ const (
 </xml>`
 )
 
-type beginPayReq struct {
-	req payDataStruct.WxUnifiedorderReq
-	cb  *selectCaseInterface.CallbackHandler
-}
-
 type WxMpPay struct {
 	appId     string
 	mchId     string
 	mckKey    string
 	notifyUrl string
-	count     int64
+	count     int64 // 用于产生bill
 	goPool    *util.GoroutinePool
 }
 
@@ -59,97 +51,114 @@ func NewWxMpPay(appId string, mchId string, mckKey string, notifyUrl string) *Wx
 
 	return wp
 }
-func (w *WxMpPay) generateBill(pd payDataStruct.ClientWxPayBase) string {
-	// 产生 一个全局唯一字符串
-	c := atomic.AddInt64(&w.count, 1)
-	s := fmt.Sprintf("%s%s%d%s%s%s%d", w.appId, w.mchId, c, w.mckKey, pd.OpenId, pd.ProductId, time.Now().Unix())
-	h := md5.New()
-	h.Write([]byte(s))
-	md5Str := hex.EncodeToString(h.Sum(nil))
 
-	return md5Str
-}
-
-//发起一笔用户微信支付
-func (w *WxMpPay) BeginPay(pd payDataStruct.ClientWxPayReq) (*payDataStruct.ClientWxPayResp, error) {
+//发起一笔用户微信支付， 返回prePayId
+func (w *WxMpPay) BeginPay(pd payDataStruct.WxPayReqData) (string, error) {
 	req := payDataStruct.WxUnifiedorderReq{
-		ClientWxPayBase: pd.ClientWxPayBase,
-		AppId:           w.appId,
-		MchId:           w.mchId,
-		Key:             w.mckKey,
-		NonceStr:        "wxpay",
-		OutTradeNo:      w.generateBill(pd.ClientWxPayBase),
-		TradeType:       "JSAPI",
-		NotifyUrl:       w.notifyUrl,
-	}
-
-	// 在数据库创建订单,发送到数据库保存
-	op := database.Instance().NewOperation("call WxPayBill_Insert(?,?,?,?,?,?,?,?)", pd.UserId, req.AppId, req.MchId, req.OutTradeNo, req.ProductId, req.OpenId, req.TotalFee, payDataStruct.WxPayStatusWaitForWxPreId)
-	_, err := database.Instance().SyncExecOperation(op)
-	if err != nil {
-		log.Error("sql:WxPayBill_Insert error", "err", err.Error())
-		return nil, err
+		WxPayBase:  pd.WxPayBase,
+		AppId:      w.appId,
+		MchId:      w.mchId,
+		Key:        w.mckKey,
+		NonceStr:   "wxpay_1122h78",
+		OutTradeNo: util.GetUniqueId(),
+		TradeType:  "JSAPI",
+		NotifyUrl:  w.notifyUrl,
 	}
 
 	// 创建签名数据
 	if xmlStr, err := util.MakeWxSign(req); err != nil {
 		log.Error("MakeWxSign error", "err", err.Error())
-		return nil, err
+		return "", err
 	} else {
 		//向微信服务器发送“统一下单”请求
 		wxRespStr, err := network.SyncHttpPost(WxPreBillUrl, xmlStr, network.ContentTypeText)
 		fmt.Println(wxRespStr)
 		if err != nil {
 			log.Error("SyncHttpPost error", "err", err.Error())
-			return nil, err
+			return "", err
 		}
 		// 解析微信返回值
 		var resp payDataStruct.WxUnifiedorderResp
 		if err := xml.Unmarshal([]byte(wxRespStr), &resp); err != nil {
 			// 如果格式解析失败，那是一个严重错误
 			log.Error("Failed to Unmarshal of WxMpPay resp.", "resp", wxRespStr)
-			return nil, err
+			return "", err
 		}
 
 		// 检查微信返回值, 通信成功标识
 		if resp.ReturnCode != "SUCCESS" {
-			// 返回微信错误，写数据库关闭订单
-			op := database.Instance().NewOperation("call WxPayBill_UpdateStatus(?,?)", req.OutTradeNo, resp.ReturnCode)
-			if _, err := database.Instance().SyncExecOperation(op); err != nil {
-				log.Error("sql:WxPayBill_UpdateStatus error", "resp", wxRespStr)
-				return nil, err
-			}
-			log.Warn("wx pay failed", "resp", resp)
-			return nil, err
+			log.Warn("wx pay failed: ReturnCode", "resp", resp)
+			return "", err
 		}
 
 		// 检查微信返回值，订单成功标识
 		if resp.ResultCode != "SUCCESS" {
-			// 返回微信错误，写数据库关闭订单
-			op := database.Instance().NewOperation("call WxPayBill_UpdateStatus(?,?)", req.OutTradeNo, resp.ResultCode)
-			if _, err := database.Instance().SyncExecOperation(op); err != nil {
-				log.Error("sql:WxPayBill_UpdateStatus error", "resp", wxRespStr)
-				return nil, err
-			}
-			log.Warn("wx pay failed.", "resp", resp)
-			return nil, err
+			log.Warn("wx pay failed: ResultCode", "resp", resp)
+			return "", err
 		}
 
 		// 都成功了
 		// 更新数据库
-		op := database.Instance().NewOperation("call WxPayBill_UpdateStatus(?,?)", req.OutTradeNo, payDataStruct.WxPayStatusWaitForUserPay)
-		if _, err := database.Instance().SyncExecOperation(op); err != nil {
-			log.Error("sql:WxPayBill_UpdateStatus error", "resp", wxRespStr)
-			return nil, err
+		extentInfo := w.appId // 额外信息保存appid
+		if err := _self.PayRecord_NewBill(pd.UserId, req.OutTradeNo, pd.ProductId, pd.TotalFee, "WX", extentInfo, true); err != nil {
+			log.Warn("wx pay PayRecord_NewBill failed.", "err", err.Error())
+			return "", err
 		}
-		// 返回resp,等待用户付款，快输入密码，快快快~
-		clientResp := payDataStruct.ClientWxPayResp{
-			WxUnifiedorderResp: resp,
-			UserId:             pd.UserId,
-			BillId:             req.OutTradeNo,
-		}
-		return &clientResp, err
+		// 返回,等待用户付款，快输入密码，快快快~
+		return resp.PrePayId, err
 
+	}
+
+}
+
+// 微信支付通知
+func wxNotifyReq(w http.ResponseWriter, r *http.Request) {
+	s, _ := ioutil.ReadAll(r.Body)
+
+	fmt.Println(string(s))
+	req := payDataStruct.WxPayNotifyReq{}
+	if err := xml.Unmarshal(s, &req); err != nil {
+		log.Error("wxNotifyReq", "Marshal error", err.Error())
+		io.WriteString(w, WxNotifyFailResp)
+		return
+	}
+
+	if pd, err := _self.PayRecord_Query(req.OutTradeNo); err != nil {
+
+	} else {
+		// 订单状态必须是等待用户支付
+		if pd.Status != payDataStruct.PayStatusWaitForUserPay {
+			if pd.Status == payDataStruct.PayStatusSuccess {
+				// 多余的补单，直接忽略
+				return
+			}
+			log.Error("Invalid to WxPayBill status", "billId", pd.BillId, "status", pd.Status)
+			io.WriteString(w, WxNotifyFailResp)
+			return
+		}
+
+		// 设置订单完结
+		_self.PayRecord_SetPayStatusSuccess(pd.BillId, req.TransactionId)
+
+		// 调用通知函数
+		if _self.callback == nil {
+			log.Error("WxCallback is nil")
+			io.WriteString(w, WxNotifyFailResp)
+			return
+		}
+
+		notify := payDataStruct.PaySystemNotify{
+			ExtentData: req,
+			ProductId:  pd.ProductId,
+			UserId:     pd.UserId,
+			PayType:    payDataStruct.PaySystemNotify_PayType_Wx,
+		}
+
+		// 发送回调
+		_self.callback.SendReturnMsgNoReturn(notify)
+
+		// 返回成功
+		io.WriteString(w, WxNotifySuccessResp)
 	}
 
 }

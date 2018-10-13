@@ -1,5 +1,6 @@
 package userDefine
 
+// user数据库结构
 type UserData struct {
 	UserId       int    `json:"userId,string"`
 	UnionId      string `json:"unionid"`

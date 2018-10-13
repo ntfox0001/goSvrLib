@@ -1,7 +1,6 @@
 package database_test
 
 import (
-	"fmt"
 	"goSvrLib/database"
 	"goSvrLib/selectCase"
 	"testing"

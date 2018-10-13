@@ -47,21 +47,24 @@ type User struct {
 	acceptMsgChan     chan *networkInterface.RawMsgData
 	userInfo          *UserInfo
 	selectLoop        *selectCase.SelectLoop
+	callback          IUserCallback
 }
 
 // 从内存创建user，数据库已经创建完成
-func NewUser(usrData userDefine.UserData) *User {
-	usr := newUser()
+func NewUser(usrData userDefine.UserData, usrcb IUserCallback) *User {
+	usr := newUser(usrcb)
 	usr.userInfo = newUserInfoForUserData(&usrData)
 	return usr
 }
 
 // 异步创建
-func AsyncNewUser(cb *selectCaseInterface.CallbackHandler) {
-	usr := newUser()
-	asyncNewUserInfo(cb, "")
+func AsyncNewUser(cb *selectCaseInterface.CallbackHandler, usrData userDefine.UserData, usrcb IUserCallback) *User {
+	usr := newUser(usrcb)
+	usr.userInfo = asyncNewUserInfo(cb, &usrData)
+
+	return usr
 }
-func newUser() *User {
+func newUser(usrcb IUserCallback) *User {
 	hbmsg := make(map[string]interface{})
 	hbmsg["msgId"] = "HeartbeatNotify"
 
@@ -78,9 +81,11 @@ func newUser() *User {
 		acceptMsgChan:     make(chan *networkInterface.RawMsgData, 20),
 		userInfo:          nil,
 		selectLoop:        selectCase.NewSelectLoop("user", 10, 10),
+		callback:          usrcb,
 	}
 
 	usr.SelectLoopHelper().RegisterEvent("RunInUser", usr.runInUser)
+
 	return usr
 }
 func (u *User) AttachWSAcceptConn(acceptConn networkInterface.IMsgHandler) {
@@ -133,7 +138,14 @@ func (u *User) AttachWSAcceptConn(acceptConn networkInterface.IMsgHandler) {
 	})
 	u.attachACId[6] = u.selectLoop.AddSelectCase(reflect.ValueOf(u.acceptJsonMsgChan), func(data interface{}) bool {
 		//u.Msghandler().DispatchJsonMsg(data.(map[string]interface{}))
+		if u.userInfo == nil || u.userInfo.usrData.UserId == 0 {
+			log.Warn("User need initial before accept msg.", "msg", data)
+			return true
+		}
+
 		if msg, ok := data.(map[string]interface{}); ok {
+			// 强制设置userId
+			msg["UserId"] = u.userInfo.usrData.UserId
 			if msgId, ok := msg["msgId"]; ok {
 				if sMsgId, ok := msgId.(string); ok {
 					u.SelectLoopHelper().SendMsgToMe(selectCaseInterface.NewEventChanMsg(sMsgId, nil, data))

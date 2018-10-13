@@ -1,40 +1,13 @@
 package userDefine
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
 	"goSvrLib/network/networkInterface"
-	"strconv"
-
-	"github.com/btcsuite/btcutil/base58"
-)
-
-const (
-	tokenPreName = "uguessuguess?!haha!"
 )
 
 type UserPair struct {
 	Ac      networkInterface.IMsgHandler
 	UnionId string
 }
-type UserToken struct {
-	Token      string
-	CreateTime int64
-}
-
-func NewToken(str string) string {
-	b := make([]byte, 2)
-	rand.Read(b)
-
-	hashstr := tokenPreName + strconv.Itoa(int(b[1])) + str + strconv.Itoa(int(b[0]))
-
-	h := sha256.New()
-	h.Write([]byte(hashstr))
-	rt := base58.CheckEncode(h.Sum(nil), 0)
-
-	return rt
-}
-
 type FindTokenReq struct {
 	Token      string
 	WaitWxChan chan string
@@ -71,4 +44,13 @@ type WxMpLoginResp struct {
 type NewUserInfoReq struct {
 	UserData
 	WaitTokenChan chan GenerateTokenResp
+}
+
+// wx code login
+type WxMpCodeLoginReq struct {
+	AppId string `json:"appId"`
+	Code  string `json:"code"`
+}
+
+type WxMpCodeLoginResp struct {
 }

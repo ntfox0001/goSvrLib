@@ -5,10 +5,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"goSvrLib/commonError"
 	"goSvrLib/network/networkInterface"
+	"io/ioutil"
+	"net/http"
 	"time"
 
 	"goSvrLib/log"
@@ -58,6 +58,7 @@ func NewServerSsl(ip, port, certFile, keyFile string) *Server {
 	return svr
 }
 
+// 开始运行服务器，不阻塞
 func (s *Server) Start() error {
 	log.Info("Server", "listen", s.ip, "port", s.port)
 	addr := fmt.Sprintf("%s:%s", s.ip, s.port)

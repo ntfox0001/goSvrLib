@@ -3,8 +3,6 @@ package userSystem
 import (
 	"goSvrLib/userSystem/userDefine"
 
-	"goSvrLib/userSystem/usInterface"
-
 	"goSvrLib/network"
 	"goSvrLib/network/networkInterface"
 	"goSvrLib/selectCase"
@@ -31,11 +29,18 @@ type UserManager struct {
 	svrport       string
 	selectLoop    *selectCase.SelectLoop
 	goPool        *util.GoroutinePool
-	mgrCallback   usInterface.IUserCallback
-	usrCallback   usInterface.IUserCallback
+	mgrCallback   IUserManagerCallback
+	usrCallback   IUserCallback
 }
 
-func NewUserManager(ip string, port string, usrMgrcb usInterface.IUserCallback, usrcb usInterface.IUserCallback) *UserManager {
+/*
+	user登陆流程：
+	需要实现一个php微信登陆，然后构造一个UserData传给服务器
+
+
+*/
+
+func NewUserManager(ip string, port string, usrMgrcb IUserManagerCallback, usrcb IUserCallback) *UserManager {
 
 	usrMgr := &UserManager{
 		wsUserMap:     make(map[networkInterface.IMsgHandler]*User),
@@ -57,7 +62,7 @@ func NewUserManager(ip string, port string, usrMgrcb usInterface.IUserCallback, 
 		return nil
 	}
 
-	if err := usrMgr.mgrCallback.Initial(usrMgr.GetSelectLoopHelper()); err != nil {
+	if err := usrMgr.mgrCallback.OnInitial(usrMgr.GetSelectLoopHelper()); err != nil {
 		log.Error("callback initial error", "err", err.Error())
 		return nil
 	}
@@ -84,7 +89,9 @@ func (m *UserManager) loadAllUser() error {
 				if err := util.I2Stru(v, &usrData); err == nil {
 
 					// 创建新user
-					usr := NewUser(&usrData)
+					usr := NewUser(usrData, m.usrCallback)
+					// 调用user回调
+					m.mgrCallback.OnInitUser(usr)
 
 					m.userMap[usrData.UnionId] = usr
 					m.userUserIdMap[usrData.UserId] = usrData.UnionId
@@ -166,7 +173,7 @@ func (m *UserManager) NewMsgHandler(c *websocket.Conn, r *http.Request) networkI
 }
 
 func (m *UserManager) Release() {
-	m.mgrCallback.Release()
+	m.mgrCallback.OnRelease()
 	for _, v := range m.userMap {
 		log.Debug("release user", "userId", v.UserInfo().GetUserData().UserId)
 		v.Release()
@@ -219,7 +226,7 @@ func (m *UserManager) generateTokenReq(data interface{}) bool {
 	var resp userDefine.GenerateTokenResp
 	//加载userinfo
 	if usr, ok := m.userMap[req.UnionId]; ok {
-		token := userDefine.NewToken(req.UnionId)
+		token := util.NewToken(req.UnionId)
 		m.userToken[token] = req.UserData
 
 		// 如果user已经加载，那么要刷新一下wx信息
@@ -237,7 +244,7 @@ func (m *UserManager) generateTokenReq(data interface{}) bool {
 		//向数据库插入新用户
 
 		cb := m.GetSelectLoopHelper().NewCallbackHandler("NewUserInfoResp", NewUIReq)
-		usr := NewUser(req.UserData)
+		usr := AsyncNewUser(cb, req.UserData, m.usrCallback)
 		m.userMap[req.UnionId] = usr
 
 	}
@@ -272,7 +279,7 @@ func (m *UserManager) newUserInfoResp(data interface{}) bool {
 			}
 
 			// new token
-			token := userDefine.NewToken(usrData.UnionId)
+			token := util.NewToken(usrData.UnionId)
 			m.userToken[token] = uiReq.UserData
 
 			m.userUserIdMap[usrData.UserId] = usrData.UnionId
