@@ -15,6 +15,9 @@ type SyncDBSystem struct {
 	itemMap     map[string]*SyncDBItem
 	itemMapLock sync.RWMutex
 }
+type SyncDBSystemParams struct {
+	SyncTime int64 `json:"syncTime"`
+}
 
 var _self *SyncDBSystem
 
@@ -29,11 +32,11 @@ func Instance() *SyncDBSystem {
 }
 
 // syncTime 间隔秒数
-func (s *SyncDBSystem) Initial(syncTime int64) error {
-	if syncTime < 10 {
-		syncTime = 10
+func (s *SyncDBSystem) Initial(params SyncDBSystemParams) error {
+	if params.SyncTime < 10 {
+		params.SyncTime = 10
 	}
-	s.syncTime = time.Duration(syncTime) * time.Second
+	s.syncTime = time.Duration(params.SyncTime) * time.Second
 
 	return nil
 }

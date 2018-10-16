@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"oryxserver/logic/cmd/wxAccessRefreshServer/wxAccessRefMsg"
-	"oryxserver/network"
-	"oryxserver/timerSystem"
+	"goSvrLib/network"
+	"goSvrLib/noticeSystem/wxAccessRefMsg"
+	"goSvrLib/timerSystem"
 	"sync"
 	"time"
 

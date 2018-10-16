@@ -2,7 +2,7 @@ package main_test
 
 import (
 	"fmt"
-	"oryxserver/network"
+	"goSvrLib/network"
 	"testing"
 )
 

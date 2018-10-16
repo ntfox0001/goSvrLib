@@ -3,14 +3,13 @@ package main
 // 运行一个access中控
 import (
 	"flag"
+	"goSvrLib/network"
+	"goSvrLib/noticeSystem/wxAccessRefMsg"
+	"goSvrLib/selectCase"
+	"goSvrLib/timerSystem"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"oryxserver/log15Ex"
-	"oryxserver/logic/cmd/wxAccessRefreshServer/wxAccessRefMsg"
-	"oryxserver/network"
-	"oryxserver/selectCase"
-	"oryxserver/timerSystem"
 	"os"
 	"os/signal"
 	"strings"
@@ -38,9 +37,9 @@ func init() {
 func main() {
 	flag.Parse()
 
-	h1 := log15Ex.CallerFileHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stdout, log15Ex.LogfmtFormat())))
+	h1 := log.CallerFileHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stdout, log.LogfmtFormat())))
 
-	h2 := log.Must.FileHandler("watrSvr.log", log15Ex.LogfmtFormat())
+	h2 := log.Must.FileHandler("watrSvr.log", log.LogfmtFormat())
 	log.Root().SetHandler(log.MultiHandler(h1, h2))
 
 	if err := InitApplicationConfig(configFile); err != nil {
