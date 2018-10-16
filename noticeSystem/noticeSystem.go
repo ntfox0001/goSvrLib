@@ -1,16 +1,15 @@
 package noticeSystem
 
 import (
-	"goSvrLib/logic/applicationConfig"
-	"goSvrLib/logic/cmd/wxAccessRefreshServer/wxAccessRefMsg"
+	"goSvrLib/log"
 	"goSvrLib/network"
+	"goSvrLib/noticeSystem/wxAccessRefMsg"
 	"goSvrLib/selectCase/selectCaseInterface"
 	"goSvrLib/util"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"goSvrLib/log"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -24,6 +23,7 @@ type NoticeSystem struct {
 	goPool  *util.GoroutineFixedPool
 
 	// 微信用
+	accessTokenUrl    string // 用于获取微信刷新token
 	wxMpMsgSender     *noticeWxMpMsgSender
 	wxAccessToken     string
 	wxAccessTokenLock sync.RWMutex
@@ -34,6 +34,12 @@ type NoticeSystem struct {
 
 	// robot
 	wxRobotSender *wxRobot
+}
+
+type NoticeSystemParams struct {
+	GoPoolSize     int    `json:"goPoolSize"`
+	ExecSize       int    `json:"execSize"`
+	AccessTokenUrl string `json:"accessTokenUrl"`
 }
 
 type wxMpRefreshAccessTokenResp struct {
@@ -53,9 +59,9 @@ func Instance() *NoticeSystem {
 	return _self
 }
 
-func (*NoticeSystem) Initial(goPoolSize int, execSize int) {
-	_self.goPool = util.NewGoFixedPool("NoticeSystem sdk", goPoolSize, execSize)
-
+func (*NoticeSystem) Initial(params NoticeSystemParams) {
+	_self.goPool = util.NewGoFixedPool("NoticeSystem sdk", params.GoPoolSize, params.ExecSize)
+	_self.accessTokenUrl = params.AccessTokenUrl
 	_self.refreshAccessToken()
 
 	go _self.run()
@@ -76,11 +82,11 @@ runable:
 	}
 }
 func (*NoticeSystem) refreshAccessToken() {
-	req := wxAccessRefMsg.WxAccessTokenReq{AppId: applicationConfig.NoticeTemplate.WxAppId}
+	req := wxAccessRefMsg.WxAccessTokenReq{AppId: NoticeTemplate.WxAppId}
 	if reqJs, err := jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(req); err != nil {
 		log.Error("NoticeSystem req marshal error", "err", err.Error())
 	} else {
-		if result, err := network.SyncHttpPost(applicationConfig.Config.NoticeSystem.AccessTokenUrl, string(reqJs), network.ContentTypeJson); err == nil {
+		if result, err := network.SyncHttpPost(_self.accessTokenUrl, string(reqJs), network.ContentTypeJson); err == nil {
 			var resp wxAccessRefMsg.WxAccessTokeyResp
 			if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal([]byte(result), &resp); err == nil {
 
@@ -104,23 +110,23 @@ func (*NoticeSystem) Release() {
 }
 
 // 添加sms短信sdk
-func (*NoticeSystem) AddMsgSdk(sdk applicationConfig.SmsSdkCfg) {
+func (*NoticeSystem) AddMsgSdk(sdk SmsSdkCfg) {
 	item := newSmsSdk(sdk)
 
 	_self.sdks = append(_self.sdks, item)
 }
 
 // 添加微信模板
-func (*NoticeSystem) AddWxMpMsgTemplate(templates []applicationConfig.WxMpMsgTemplateCfg) {
+func (*NoticeSystem) AddWxMpMsgTemplate(templates []WxMpMsgTemplateCfg) {
 	_self.wxMpMsgSender = newNoticeWxMpMsgSender(templates)
 }
 
 // 添加phone模板
-func (*NoticeSystem) AddPhoneTemplate(templates []applicationConfig.PhoneTemplateCfg) {
+func (*NoticeSystem) AddPhoneTemplate(templates []PhoneTemplateCfg) {
 	_self.phoneSender = newPhone(templates)
 }
 
-func (*NoticeSystem) AddWxRobotTemplate(ip, port string, refreshTime uint, templates []applicationConfig.WxRobotTemplateCfg) error {
+func (*NoticeSystem) AddWxRobotTemplate(ip, port string, refreshTime uint, templates []WxRobotTemplateCfg) error {
 	var err error
 	_self.wxRobotSender, err = newWxRobot(ip, port, refreshTime, templates)
 	if err != nil {

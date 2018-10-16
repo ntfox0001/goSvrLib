@@ -16,18 +16,24 @@ func Instance() *DatabaseSystem {
 	return _self
 }
 
+type DatabaseSystemParams struct {
+	IP, Port, User, Password, DBName string
+	GoPoolSize                       int
+	ExecSize                         int
+}
+
 type DatabaseSystem struct {
 	goPool *util.GoroutinePool
 	db     *Database
 }
 
 // db底层用多链接实现，可以并发调用，用锁实现线程安全，如果发现瓶颈，这里可以改为多db访问
-func (d *DatabaseSystem) Initial(ip, port, user, password, database string, goPoolSize int, execSize int) error {
-	db, err := NewDatabase(ip, port, user, password, database)
+func (d *DatabaseSystem) Initial(params DatabaseSystemParams) error {
+	db, err := NewDatabase(params.IP, params.Port, params.User, params.Password, params.DBName)
 	if err != nil {
 		return err
 	}
-	d.goPool = util.NewGoPool("DatabaseSystem", goPoolSize, execSize)
+	d.goPool = util.NewGoPool("DatabaseSystem", params.GoPoolSize, params.ExecSize)
 	d.db = db
 	return nil
 }
