@@ -2,20 +2,20 @@ package noticeSystem
 
 import (
 	"goSvrLib/commonError"
-	"goSvrLib/logic/applicationConfig"
 	"goSvrLib/network"
 	"goSvrLib/util"
 	"strings"
 
 	"goSvrLib/log"
+
 	jsoniter "github.com/json-iterator/go"
 )
 
 type phone struct {
-	phoneTemplates []applicationConfig.PhoneTemplateCfg
+	phoneTemplates []PhoneTemplateCfg
 }
 
-func newPhone(templates []applicationConfig.PhoneTemplateCfg) *phone {
+func newPhone(templates []PhoneTemplateCfg) *phone {
 	return &phone{
 		phoneTemplates: templates,
 	}
@@ -54,7 +54,7 @@ func (p *phone) send(data map[string]string) (rt *PhoneMsgResp, rtErr error) {
 		return nil, err
 	} else {
 		postStr := "msg=" + string(s)
-		if result, err := network.SyncHttpPost(applicationConfig.NoticeTemplate.PhoneUrl, postStr, network.ContentTypeFrom); err != nil {
+		if result, err := network.SyncHttpPost(NoticeTemplate.PhoneUrl, postStr, network.ContentTypeFrom); err != nil {
 			log.Warn("phone", "post err", err.Error())
 			return nil, err
 		} else {
@@ -74,7 +74,7 @@ func (p *phone) send(data map[string]string) (rt *PhoneMsgResp, rtErr error) {
 
 }
 
-func (p *phone) getTemplateFromType(noticeType string) (*applicationConfig.PhoneTemplateCfg, error) {
+func (p *phone) getTemplateFromType(noticeType string) (*PhoneTemplateCfg, error) {
 	for _, v := range p.phoneTemplates {
 		if v.Type == noticeType {
 			return &v, nil
@@ -84,7 +84,7 @@ func (p *phone) getTemplateFromType(noticeType string) (*applicationConfig.Phone
 	return nil, commonError.NewStringErr("TemplateType does not exist.")
 }
 
-func (p *phone) getTtsParamString(templ *applicationConfig.PhoneTemplateCfg, data map[string]string) (string, error) {
+func (p *phone) getTtsParamString(templ *PhoneTemplateCfg, data map[string]string) (string, error) {
 	jsobj := make(map[string]string)
 	for k, v := range templ.Args {
 		s := util.StringReplace(v, data)

@@ -2,7 +2,6 @@ package noticeSystem
 
 import (
 	"goSvrLib/commonError"
-	"goSvrLib/logic/applicationConfig"
 	"goSvrLib/network"
 	"goSvrLib/util"
 
@@ -11,10 +10,10 @@ import (
 )
 
 type smsSdk struct {
-	applicationConfig.SmsSdkCfg
+	SmsSdkCfg
 }
 
-func newSmsSdk(sdk applicationConfig.SmsSdkCfg) *smsSdk {
+func newSmsSdk(sdk SmsSdkCfg) *smsSdk {
 	return &smsSdk{
 		SmsSdkCfg: sdk,
 	}
@@ -67,7 +66,7 @@ func (n *smsSdk) send(data map[string]string) (rt string, rtErr error) {
 	}
 }
 
-func (n *smsSdk) getTemplateFromType(noticeType string) (*applicationConfig.SmsMsgTemplate, error) {
+func (n *smsSdk) getTemplateFromType(noticeType string) (*SmsMsgTemplate, error) {
 	for _, v := range n.Templates {
 		if v.Type == noticeType {
 			return &v, nil

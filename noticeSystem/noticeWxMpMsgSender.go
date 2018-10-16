@@ -2,21 +2,21 @@ package noticeSystem
 
 import (
 	"fmt"
-	"net/url"
 	"goSvrLib/commonError"
-	"goSvrLib/logic/applicationConfig"
 	"goSvrLib/network"
 	"goSvrLib/util"
+	"net/url"
 
 	"goSvrLib/log"
+
 	jsoniter "github.com/json-iterator/go"
 )
 
 type noticeWxMpMsgSender struct {
-	wxMpMsgTemplates []applicationConfig.WxMpMsgTemplateCfg
+	wxMpMsgTemplates []WxMpMsgTemplateCfg
 }
 
-func newNoticeWxMpMsgSender(templates []applicationConfig.WxMpMsgTemplateCfg) *noticeWxMpMsgSender {
+func newNoticeWxMpMsgSender(templates []WxMpMsgTemplateCfg) *noticeWxMpMsgSender {
 	return &noticeWxMpMsgSender{
 		wxMpMsgTemplates: templates,
 	}
@@ -71,11 +71,11 @@ func (w *noticeWxMpMsgSender) send(data map[string]string) (wxResp *WxMpMsgResp,
 		log.Error("invalid format of WX Resp", "resp", wxResult)
 		return &wxresp, err
 	}
-	
+
 	return &wxresp, nil
 }
 
-func (w *noticeWxMpMsgSender) getTemplateFromType(noticeType string) (*applicationConfig.WxMpMsgTemplateCfg, error) {
+func (w *noticeWxMpMsgSender) getTemplateFromType(noticeType string) (*WxMpMsgTemplateCfg, error) {
 	for _, v := range w.wxMpMsgTemplates {
 		if v.Type == noticeType {
 			return &v, nil
@@ -85,7 +85,7 @@ func (w *noticeWxMpMsgSender) getTemplateFromType(noticeType string) (*applicati
 	return nil, commonError.NewStringErr("TemplateType does not exist.")
 }
 
-func (w *noticeWxMpMsgSender) makeUrl(template *applicationConfig.WxMpMsgTemplateCfg, data map[string]string) (string, error) {
+func (w *noticeWxMpMsgSender) makeUrl(template *WxMpMsgTemplateCfg, data map[string]string) (string, error) {
 	if template.Url == "" {
 		return "", nil
 	}

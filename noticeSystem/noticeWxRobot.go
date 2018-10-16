@@ -3,13 +3,13 @@ package noticeSystem
 import (
 	"fmt"
 	"goSvrLib/commonError"
-	"goSvrLib/logic/applicationConfig"
 	"goSvrLib/network"
 	"goSvrLib/util"
 	"sync"
 	"time"
 
 	"goSvrLib/log"
+
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -23,7 +23,7 @@ type wxRobot struct {
 	wxInfoLock sync.RWMutex
 	quitChan   chan interface{}
 
-	templates []applicationConfig.WxRobotTemplateCfg
+	templates []WxRobotTemplateCfg
 
 	// url commend
 	getListUrl     string
@@ -36,7 +36,7 @@ type wxRobot struct {
 	getRoomMsgUrl  string
 }
 
-func newWxRobot(ip, port string, refreshTime uint, templates []applicationConfig.WxRobotTemplateCfg) (*wxRobot, error) {
+func newWxRobot(ip, port string, refreshTime uint, templates []WxRobotTemplateCfg) (*wxRobot, error) {
 	robot := &wxRobot{
 		ip:         ip,
 		port:       port,
@@ -253,7 +253,7 @@ func (r *wxRobot) _send(myself string, target []string, msg string) (rtErr error
 	return nil
 }
 
-func (r *wxRobot) GetTemplateFromType(noticeType string) (*applicationConfig.WxRobotTemplateCfg, error) {
+func (r *wxRobot) GetTemplateFromType(noticeType string) (*WxRobotTemplateCfg, error) {
 	for _, v := range r.templates {
 		if v.Type == noticeType {
 			return &v, nil

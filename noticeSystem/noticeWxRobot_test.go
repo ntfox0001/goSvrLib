@@ -1,13 +1,12 @@
 package noticeSystem
 
 import (
-	"goSvrLib/logic/applicationConfig"
 	"testing"
 )
 
 func TestNoticeWxRobot(t *testing.T) {
-	templ := make([]applicationConfig.WxRobotTemplateCfg, 0)
-	templ = append(templ, applicationConfig.WxRobotTemplateCfg{
+	templ := make([]WxRobotTemplateCfg, 0)
+	templ = append(templ, WxRobotTemplateCfg{
 		Type: "ttt",
 		Msg:  "我擦我擦我擦啊{ss}",
 	})
