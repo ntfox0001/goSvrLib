@@ -21,7 +21,16 @@ type OrderDBPersistData struct {
 // 创建数据库持久化对象
 func NewOrderDBPersistData(dbCfg database.DbConfig, discardDay uint, sqlProvider orderData.IPersistDataSql) (orderData.IPersistData, error) {
 	dbSys := &database.DatabaseSystem{}
-	err := dbSys.Initial(dbCfg.Ip, dbCfg.Port, dbCfg.User, dbCfg.Passwd, dbCfg.DbName, 50, 50)
+	dbParams := database.DatabaseSystemParams{
+		IP:         dbCfg.Ip,
+		Port:       dbCfg.Port,
+		User:       dbCfg.User,
+		Password:   dbCfg.Passwd,
+		DBName:     dbCfg.DbName,
+		GoPoolSize: 50,
+		ExecSize:   50,
+	}
+	err := dbSys.Initial(dbParams)
 	if err != nil {
 		return nil, err
 	}
